@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Upload a resume, paste a job description, and see what to tailor before you apply.">
+<title>JD Fit Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: two-pane workbench. Inputs (JD, resume upload, notes) on the left, the marked-up report on the right; stacks on phones. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#15202b; --muted:#5a6675; --line:#dbe1e8;
+  --accent:#2c47d1; --accent-ink:#ffffff; --mark:#ffe169;
+  --ok:#1d7f48; --ok-bg:#e3f4ea; --warn:#9a6511; --warn-bg:#fbefd6; --bad:#b4322a; --bad-bg:#fbe3e1;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1319; --surface:#161d26; --ink:#e5eaf0; --muted:#94a1af; --line:#28323e;
+  --accent:#8299ff; --accent-ink:#0e1319; --mark:#8a7414;
+  --ok:#5cc98f; --ok-bg:#16301f; --warn:#e3ab52; --warn-bg:#33270f; --bad:#f2786d; --bad-bg:#3a1a18;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1319; --surface:#161d26; --ink:#e5eaf0; --muted:#94a1af; --line:#28323e;
+  --accent:#8299ff; --accent-ink:#0e1319; --mark:#8a7414;
+  --ok:#5cc98f; --ok-bg:#16301f; --warn:#e3ab52; --warn-bg:#33270f; --bad:#f2786d; --bad-bg:#3a1a18;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+header{margin-bottom:20px}
+h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+h1 .hl{background:linear-gradient(transparent 55%,var(--mark) 55%);padding:0 2px}
+.sub{color:var(--muted);margin:0;max-width:66ch}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+label,.label{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;resize:vertical;line-height:1.5}
+textarea:focus-visible,button:focus-visible,summary:focus-visible,.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+#jd{min-height:240px}
+#resume{min-height:300px;font-size:13px}
+#notes{min-height:90px;font-size:13px}
+details>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details>summary::-webkit-details-marker{display:none}
+details>summary .label{margin:0}
+.chev{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+details[open]>summary{margin-bottom:8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{justify-content:space-between}
+button{font:inherit;font-weight:600;font-size:14px;border-radius:8px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.small{font-size:12.5px;padding:5px 10px;font-weight:500}
+.hint{font-size:12.5px;color:var(--muted)}
+input.text{font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;flex:1;width:100%}
+input.text:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.field{display:grid;gap:4px}
+.inline{display:flex;gap:8px;align-items:center}
+.inline input{flex:1}
+.or{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 8px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.keystate{font-size:12.5px}
+.keystate.ok{color:var(--ok)} .keystate.none{color:var(--warn)}
+.status{font-size:13.5px;color:var(--muted);min-height:1.5em;margin:10px 0 0}
+.status.err{color:var(--bad)}
+
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border:1.5px dashed var(--line);border-radius:10px;padding:18px 12px;background:var(--bg);cursor:pointer;position:relative}
+.drop.over{border-color:var(--accent);background:var(--surface)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop b{font-size:14px}
+.filemeta{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
+
+.checks{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:5px;font-size:13px}
+.checks li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:6px;align-items:start}
+.checks .ic{font-family:var(--font-mono);font-weight:600}
+.checks .pass .ic{color:var(--ok)} .checks .fail .ic{color:var(--bad)} .checks .warn .ic{color:var(--warn)}
+.checks small{color:var(--muted)}
+
+/* report */
+.empty{display:flex;flex-direction:column;gap:12px;padding:8px 4px}
+.empty h2{font-size:18px;margin:0}
+.empty ol{margin:0;padding-left:20px;color:var(--muted);display:grid;gap:6px}
+.scores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:560px){.scores{grid-template-columns:minmax(0,1fr)}}
+.scorecard{border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.big{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:48px;font-weight:500;line-height:1;letter-spacing:-.03em}
+.big small{font-size:16px;color:var(--muted);margin-left:2px}
+.band{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.dims{display:grid;gap:8px}
+.dim{display:grid;grid-template-columns:minmax(0,130px) minmax(0,1fr) 30px;gap:8px;align-items:center;font-size:12.5px}
+.dim .w{color:var(--muted);font-family:var(--font-mono);font-size:10.5px}
+.track{height:7px;background:var(--bg);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.fill{height:100%;border-radius:99px;background:var(--accent)}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.verdict{margin:0;font-size:15px;max-width:72ch}
+.knock{border-left:4px solid var(--bad);background:var(--bad-bg);border-radius:8px;padding:12px 14px}
+.knock strong{color:var(--bad)}
+.knock ul{margin:6px 0 0;padding-left:18px}
+h3{font-size:15px;margin:0 0 10px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+h3 .count{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:400}
+section+section{border-top:1px solid var(--line);padding-top:16px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;border-radius:6px;padding:4px 9px}
+.chip.present{background:var(--ok-bg);color:var(--ok)}
+.chip.reword{background:var(--warn-bg);color:var(--warn)}
+.chip.gap{background:var(--bad-bg);color:var(--bad)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.pairs{display:grid;gap:6px;font-size:13.5px}
+.pairs div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.pairs div:last-child{border-bottom:0}
+.pairs .head{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line)}
+.kwlist{margin-top:12px;display:grid;gap:6px;font-size:13px}
+.kwlist div{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:10px}
+@media (max-width:520px){.kwlist div,.pairs div{grid-template-columns:minmax(0,1fr)}}
+.kwlist span{color:var(--muted)}
+.todo{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.todo li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
+.todo input{margin-top:4px;width:16px;height:16px;accent-color:var(--accent)}
+.todo .where{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--line);color:var(--muted);margin-right:6px;white-space:nowrap}
+.todo .pri-high .where{border-color:var(--bad);color:var(--bad)}
+.todo .done span.t{text-decoration:line-through;color:var(--muted)}
+.todo .d{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.edit{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;display:grid;gap:8px}
+.edit.first{border-top:0;padding-top:0;margin-top:0}
+.before{font-size:13px;color:var(--muted)}
+.before::before{content:"Now  ";font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em}
+.after{font-size:14.5px;border-left:3px solid var(--mark);padding:2px 0 2px 10px}
+.why{font-size:12.5px;color:var(--muted)}
+.ul{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px}
+.gap-item span{color:var(--muted)}
+.foot{margin-top:18px;font-size:12px;color:var(--muted);max-width:90ch}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .5s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>JD <span class="hl">Fit</span> Check</h1>
+    <p class="sub">Upload your resume and paste a job description. You get an ATS screening estimate, the skills that already match, and a list of exactly what to add or reword in your Word doc. Nothing is invented: every suggestion uses facts already on your resume or in your notes.</p>
+  </header>
+
+  <div class="grid">
+    <div class="stack">
+      <div class="panel">
+        <details id="settings">
+          <summary><span class="label">API key and model</span><span class="keystate" id="keyState"></span></summary>
+          <div class="stack" style="gap:12px">
+            <div class="field">
+              <label for="apikey" style="margin:0">OpenRouter API key</label>
+              <div class="inline">
+                <input id="apikey" class="text" type="password" autocomplete="off" spellcheck="false" placeholder="sk-or-v1-...">
+                <button id="showKey" class="small" type="button">Show</button>
+                <button id="clearKey" class="small" type="button">Clear</button>
+              </div>
+              <span class="hint">Saved only in this browser. Paste a new key any time to switch. Leave empty to use the site's own key (needs the access code).</span>
+            </div>
+            <div class="field">
+              <label for="model" style="margin:0">Model</label>
+              <input id="model" class="text" type="text" autocomplete="off" spellcheck="false" placeholder="anthropic/claude-sonnet-4.5">
+              <span class="hint">Optional. Any model name from openrouter.ai/models. Empty uses the site's default.</span>
+            </div>
+            <div class="field" id="codeRow">
+              <label for="code" style="margin:0">Access code</label>
+              <input id="code" class="text" type="password" autocomplete="off" placeholder="Only needed when no API key is entered above">
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <label for="jdurl">Job posting URL</label>
+        <div class="inline">
+          <input id="jdurl" class="text" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://boards.greenhouse.io/company/jobs/123">
+          <button id="fetchJd" type="button">Fetch</button>
+        </div>
+        <span class="hint" style="display:block;margin-top:4px">Works for most Greenhouse, Lever, Ashby and Workable pages. LinkedIn and some Workday pages block this; paste the text instead.</span>
+        <div class="or">or paste it</div>
+        <label for="jd">Job description</label>
+        <textarea id="jd" placeholder="Paste the full job description here, including requirements and nice-to-haves."></textarea>
+        <div class="row between" style="margin-top:10px">
+          <div class="row">
+            <button id="run" class="primary">Check fit</button>
+            <button id="stop" hidden>Stop</button>
+          </div>
+          <button id="clearjd" class="small">Clear</button>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </div>
+
+      <div class="panel">
+        <span class="label">Resume</span>
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" aria-label="Upload resume">
+          <b>Upload resume</b>
+          <span class="hint">PDF, Word (.docx) or text. Drop it here or click to choose.</span>
+        </div>
+        <div class="filemeta" id="filemeta">No resume uploaded yet</div>
+
+        <details id="readBox" open>
+          <summary style="margin-top:12px"><span class="label">What an ATS reads from it</span><span class="chev" id="readMeta"></span></summary>
+          <ul class="checks" id="checks"></ul>
+        </details>
+
+        <details id="resumeBox" style="margin-top:12px">
+          <summary><span class="label">Extracted text</span><span class="chev">▾</span></summary>
+          <textarea id="resume" aria-label="Resume text" placeholder="Upload a resume above, or paste its text here."></textarea>
+          <div class="row between" style="margin-top:8px">
+            <span class="hint">This is the text the check uses. Edit it to test a change before you make it in Word.</span>
+            <button id="resetResume" class="small">Clear resume</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <details>
+          <summary><span class="label">Facts not on the resume</span><span class="chev">▾</span></summary>
+          <textarea id="notes" aria-label="Facts not on the resume" placeholder="Earlier roles, total years of experience, projects you left off the resume, location and work authorization."></textarea>
+          <p class="hint" style="margin:6px 0 0">True things you could add. Claude only suggests them when the JD asks for them, and marks where they came from.</p>
+        </details>
+      </div>
+    </div>
+
+    <div class="panel" id="report">
+      <div class="empty" id="empty">
+        <h2>Your report shows up here</h2>
+        <ol>
+          <li><b>ATS screen score:</b> how likely the resume clears an automated keyword screen for this JD, from keyword coverage, readability and hard requirements.</li>
+          <li><b>Fit score:</b> how well you match the role, split into skills and domain, responsibilities, seniority and title.</li>
+          <li><b>Matching skills:</b> what you already have, shown next to the JD's wording for it.</li>
+          <li><b>What to add or tailor:</b> a checklist in priority order, with where each change goes.</li>
+          <li>Bullet and summary rewrites in Google X-Y-Z format, gaps, and how to handle each one.</li>
+        </ol>
+        <p class="hint">The readability check on the left runs as soon as you upload. Your resume is kept only in this browser and sent to the AI model just for the check.</p>
+      </div>
+      <div id="out" hidden></div>
+    </div>
+  </div>
+  <p class="foot">Both scores are this page's own estimates. No ATS publishes a universal pass score: some only filter on knockout questions and keywords, and many leave ranking to a recruiter. Use the scores to find gaps, not as a target. Your resume and notes stay in this browser and are sent to the AI model only when you press Check fit.</p>
+</div>
+
+
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const FIT_W = {skills:.40, responsibilities:.30, seniority:.15, title:.15};
+  const FIT_L = {skills:"Skills and domain", responsibilities:"Responsibilities", seniority:"Seniority and years", title:"Title"};
+  const SAVED_RESUME = "";
+  const SAVED_NOTES = "";
+  let pdfColumns = null;   // null = not a PDF / unknown; else {suspect:boolean}
+  let sourceLabel = "No resume uploaded yet";
+
+  function load(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : v; }catch(e){ return d; } }
+  function save(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+
+  $("jd").value = load("jdfit.jd", "");
+  $("resume").value = load("jdfit.resume", SAVED_RESUME);
+  $("notes").value = load("jdfit.notes", SAVED_NOTES);
+  sourceLabel = load("jdfit.source", sourceLabel);
+  $("filemeta").textContent = sourceLabel;
+  runChecks();
+
+  $("jd").addEventListener("input", () => save("jdfit.jd", $("jd").value));
+  $("resume").addEventListener("input", () => { save("jdfit.resume", $("resume").value); runChecks(); });
+  $("notes").addEventListener("input", () => save("jdfit.notes", $("notes").value));
+  $("clearjd").addEventListener("click", () => { $("jd").value = ""; save("jdfit.jd", ""); $("jd").focus(); });
+  $("resetResume").addEventListener("click", () => {
+    $("resume").value = ""; save("jdfit.resume", "");
+    pdfColumns = null; setSource("No resume uploaded yet"); runChecks();
+  });
+  function setSource(t){ sourceLabel = t; $("filemeta").textContent = t; save("jdfit.source", t); }
+
+  /* ---------- upload ---------- */
+  const drop = $("drop");
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) handleFile(f); });
+  $("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleFile(f); e.target.value = ""; });
+
+  function loadScript(src){
+    return new Promise((res, rej) => {
+      if (document.querySelector('script[src="' + src + '"]')) return res();
+      const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("load")); document.head.appendChild(s);
+    });
+  }
+
+  async function handleFile(f){
+    const name = f.name || "resume";
+    const ext = name.toLowerCase().split(".").pop();
+    $("filemeta").textContent = "Reading " + name + "…";
+    try{
+      let text = "";
+      pdfColumns = null;
+      if (ext === "pdf" || f.type === "application/pdf"){
+        const r = await readPdf(f); text = r.text; pdfColumns = {suspect: r.columnSuspect};
+      } else if (ext === "docx"){
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
+        const res = await window.mammoth.extractRawText({arrayBuffer: await f.arrayBuffer()});
+        text = res.value || "";
+      } else if (ext === "txt" || (f.type || "").startsWith("text/")){
+        text = await f.text();
+      } else {
+        $("filemeta").textContent = "That file type isn't supported. Upload a PDF, a .docx or a .txt file.";
+        return;
+      }
+      text = text.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
+      if (!text){
+        $("filemeta").textContent = name + ": no text found. If it's a scanned or image-only PDF, an ATS can't read it either. Export it again from Word.";
+        $("resume").value = ""; save("jdfit.resume", ""); runChecks(); return;
+      }
+      $("resume").value = text; save("jdfit.resume", text);
+      setSource(name + " · " + text.split(/\s+/).length + " words extracted");
+      runChecks();
+    }catch(e){
+      $("filemeta").textContent = "Couldn't read " + name + ". Try exporting it again, or paste the text into the box below.";
+    }
+  }
+
+  async function readPdf(f){
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");
+    const lib = window.pdfjsLib;
+    const doc = await lib.getDocument({data: new Uint8Array(await f.arrayBuffer()), isEvalSupported:false, useSystemFonts:true, disableFontFace:true}).promise;
+    const out = []; let splitLines = 0, totalLines = 0;
+    for (let p = 1; p <= doc.numPages; p++){
+      const page = await doc.getPage(p);
+      const width = page.view[2] - page.view[0];
+      const tc = await page.getTextContent();
+      const rows = [];
+      tc.items.forEach(it => {
+        if (!it.str) return;
+        const y = Math.round(it.transform[5]), x = it.transform[4];
+        let row = rows.find(r => Math.abs(r.y - y) <= 2);
+        if (!row){ row = {y, items:[]}; rows.push(row); }
+        row.items.push({x, w: it.width || 0, s: it.str});
+      });
+      rows.sort((a,b) => b.y - a.y);
+      rows.forEach(r => {
+        r.items.sort((a,b) => a.x - b.x);
+        let line = "", lastEnd = null, bigGap = false;
+        r.items.forEach(it => {
+          if (lastEnd !== null){
+            const gap = it.x - lastEnd;
+            if (gap > width * 0.12) bigGap = true;
+            if (gap > 1 && !line.endsWith(" ") && !it.s.startsWith(" ")) line += " ";
+          }
+          line += it.s; lastEnd = it.x + it.w;
+        });
+        if (line.trim()){ out.push(line.trim()); totalLines++; if (bigGap) splitLines++; }
+      });
+      out.push("");
+    }
+    return {text: out.join("\n"), columnSuspect: totalLines > 10 && splitLines / totalLines > 0.25};
+  }
+
+  /* ---------- readability checks (no Claude) ---------- */
+  let lastChecks = {score: 0, items: []};
+  function runChecks(){
+    const t = $("resume").value || "";
+    const lower = t.toLowerCase();
+    const words = t.trim() ? t.trim().split(/\s+/).length : 0;
+    const bad = (t.match(/[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]/g) || []).length;
+    const items = [];
+    const add = (state, text, note) => items.push({state, text, note});
+
+    add(words > 150 ? "pass" : "fail", words > 150 ? "Text is readable" : "Very little text came out", words > 150 ? words + " words" : "Scanned or image-only resumes can't be read by an ATS.");
+    add(bad === 0 ? "pass" : "fail", bad === 0 ? "No garbled characters" : bad + " garbled characters", bad === 0 ? "" : "Re-export from Word with Save as PDF.");
+    const email = /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t);
+    add(email ? "pass" : "fail", email ? "Email found" : "No email address", email ? "" : "Many ATS forms mark the application incomplete without one.");
+    const phone = /(\+\d{1,3}[\s-]?)?\d[\d\s-]{8,}\d/.test(t), cc = /\+\d{1,3}/.test(t);
+    add(phone ? (cc ? "pass" : "warn") : "warn", phone ? (cc ? "Phone with country code" : "Phone without country code") : "No phone number", phone && !cc ? "Add +91 for roles outside India." : (!phone ? "Optional, but recruiters often call first." : ""));
+    const li = /linkedin\.com\/in\//i.test(t);
+    add(li ? "pass" : "warn", li ? "LinkedIn URL written out" : "LinkedIn URL not in the text", li ? "" : "A linked word like 'LinkedIn' loses its URL in most parsers.");
+    const heads = [["experience", /\b(work experience|experience|employment)\b/], ["skills", /\bskills\b/], ["education", /\beducation\b/]];
+    const missing = heads.filter(h => !h[1].test(lower)).map(h => h[0]);
+    add(missing.length === 0 ? "pass" : "fail", missing.length === 0 ? "Standard section headings" : "Missing heading: " + missing.join(", "), missing.length ? "Use plain headings an ATS recognizes." : "Experience, Skills, Education");
+    const dates = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{4}\b|\b\d{4}\s*[-–—]\s*(\d{4}|present|current)\b|\b\d{1,2}\/\d{4}\b/i.test(t);
+    add(dates ? "pass" : "fail", dates ? "Job dates readable" : "No job dates found", dates ? "" : "Use 'Month YYYY - Present' so years of experience can be counted.");
+    add(words >= 350 && words <= 900 ? "pass" : "warn", "Length: " + words + " words", words < 350 ? "Thin for a 5+ year PM. Aim for 400 to 800." : (words > 900 ? "Long. Recruiters skim; aim for 400 to 800." : ""));
+    if (pdfColumns) add(pdfColumns.suspect ? "warn" : "pass", pdfColumns.suspect ? "Looks like two columns or tables" : "Single-column layout", pdfColumns.suspect ? "Some parsers mix columns together. A single column is safest." : "");
+
+    const w = {pass:1, warn:.5, fail:0};
+    const score = items.length ? Math.round(items.reduce((s,i) => s + w[i.state], 0) / items.length * 100) : 0;
+    lastChecks = {score, items};
+    const ul = $("checks"); ul.innerHTML = "";
+    items.forEach(i => {
+      const li = document.createElement("li"); li.className = i.state;
+      const ic = document.createElement("span"); ic.className = "ic"; ic.textContent = i.state === "pass" ? "✓" : (i.state === "warn" ? "!" : "✕");
+      const tx = document.createElement("span"); tx.textContent = i.text + " ";
+      if (i.note){ const sm = document.createElement("small"); sm.textContent = i.note; tx.append(sm); }
+      li.append(ic, tx); ul.append(li);
+    });
+    $("readMeta").textContent = "Readability " + score + "/100";
+  }
+
+  /* ---------- analysis (server) ---------- */
+  let ctl = null;
+  $("stop").addEventListener("click", () => ctl && ctl.abort());
+  $("code").value = load("jdfit.code", "");
+  $("code").addEventListener("input", () => save("jdfit.code", $("code").value.trim()));
+  $("apikey").value = load("jdfit.key", "");
+  $("model").value = load("jdfit.model", "");
+  $("jdurl").value = load("jdfit.url", "");
+  function keyState(){
+    const k = $("apikey").value.trim();
+    const st = $("keyState");
+    st.textContent = k ? "Your key · ends " + k.slice(-4) : "Using the site's key";
+    st.className = "keystate " + (k ? "ok" : "none");
+  }
+  keyState();
+  if (!$("apikey").value.trim() && !$("code").value.trim()) $("settings").open = true;
+  $("apikey").addEventListener("input", () => { save("jdfit.key", $("apikey").value.trim()); keyState(); });
+  $("model").addEventListener("input", () => save("jdfit.model", $("model").value.trim()));
+  $("jdurl").addEventListener("input", () => save("jdfit.url", $("jdurl").value.trim()));
+  $("showKey").addEventListener("click", () => { const i = $("apikey"); const show = i.type === "password"; i.type = show ? "text" : "password"; $("showKey").textContent = show ? "Hide" : "Show"; });
+  $("clearKey").addEventListener("click", () => { $("apikey").value = ""; save("jdfit.key", ""); keyState(); $("apikey").focus(); });
+
+  function authHeaders(){
+    const h = {"Content-Type": "application/json"};
+    const k = $("apikey").value.trim(); if (k) h["x-openrouter-key"] = k;
+    const c = $("code").value.trim(); if (c) h["x-access-code"] = c;
+    const m = $("model").value.trim(); if (m) h["x-model"] = m;
+    return h;
+  }
+
+  $("fetchJd").addEventListener("click", async () => {
+    const url = $("jdurl").value.trim();
+    const status = $("status"); status.classList.remove("err");
+    if (!/^https?:\/\//i.test(url)){ status.textContent = "Enter the full job posting link, starting with https://"; status.classList.add("err"); return; }
+    const btn = $("fetchJd"); btn.disabled = true; btn.textContent = "Fetching…";
+    status.textContent = "Fetching the job posting…";
+    try{
+      const res = await fetch("/api/fetch-jd", {method: "POST", headers: authHeaders(), body: JSON.stringify({url})});
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok){
+        if (res.status === 401){ $("settings").open = true; throw {msg: "Enter your API key or the access code in the settings above, then fetch again."}; }
+        throw {msg: body.error || "Couldn't read that page. Paste the job description instead."};
+      }
+      $("jd").value = (body.title ? body.title + "\n\n" : "") + body.text;
+      save("jdfit.jd", $("jd").value);
+      status.textContent = "Fetched " + (body.title || "the posting") + ". Check the text below, trim anything that isn't the job, then press Check fit.";
+    }catch(e){
+      status.textContent = (e && e.msg) || "Couldn't reach the server. Paste the job description instead."; status.classList.add("err");
+    }finally{ btn.disabled = false; btn.textContent = "Fetch"; }
+  });
+
+  $("run").addEventListener("click", async () => {
+    const jd = $("jd").value.trim();
+    const resume = $("resume").value.trim();
+    const notes = $("notes").value.trim();
+    const status = $("status");
+    status.classList.remove("err");
+    if (jd.length < 200){ status.textContent = "Paste the full job description first. This one is too short to judge."; status.classList.add("err"); return; }
+    if (resume.length < 200){ status.textContent = "There's no resume text to check. Upload your resume first."; status.classList.add("err"); return; }
+
+    ctl = new AbortController();
+    $("run").disabled = true; $("stop").hidden = false;
+    const t0 = Date.now();
+    const tick = setInterval(() => { status.textContent = "Reading the JD against your resume… " + Math.round((Date.now() - t0) / 1000) + "s. This usually takes 30 to 90 seconds."; }, 1000);
+    status.textContent = "Reading the JD against your resume…";
+    try{
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({jd: jd.slice(0, 20000), resume: resume.slice(0, 12000), notes: notes.slice(0, 4000)}),
+        signal: ctl.signal
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok){
+        if (res.status === 401){ $("settings").open = true; throw {msg: body.error || "Enter your OpenRouter API key, or the site's access code, in the settings above."}; }
+        throw {msg: body.error || "The server couldn't finish the check. Try again in a minute."};
+      }
+      render(body, resume);
+      status.textContent = "Done. Work through the checklist in Word, then upload the new version to check again.";
+    }catch(e){
+      if (e && e.name === "AbortError"){ status.textContent = "Stopped."; }
+      else { status.textContent = (e && e.msg) || "Couldn't reach the server. Check your connection and try again."; status.classList.add("err"); }
+    }finally{
+      clearInterval(tick);
+      $("run").disabled = false; $("stop").hidden = true; ctl = null;
+    }
+  });
+
+  /* ---------- render ---------- */
+  function el(tag, cls, text){ const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function clamp(n){ n = Number(n); return isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0; }
+  function arr(a){ return Array.isArray(a) ? a : []; }
+  function bandFor(v){ return v >= 80 ? ["Strong", "var(--ok)"] : v >= 65 ? ["Good, with edits", "var(--accent)"] : v >= 50 ? ["At risk", "var(--warn)"] : ["Likely filtered", "var(--bad)"]; }
+  function copyBtn(text){
+    const b = el("button", "small", "Copy");
+    b.addEventListener("click", async () => {
+      try{ await navigator.clipboard.writeText(text); b.textContent = "Copied"; }
+      catch(e){ b.textContent = "Select and copy"; }
+      setTimeout(() => b.textContent = "Copy", 1600);
+    });
+    return b;
+  }
+  function bar(label, weight, val){
+    const row = el("div", "dim");
+    const name = el("div"); name.append(document.createTextNode(label + " "), el("span", "w", weight));
+    const tr = el("div", "track"); const f = el("div", "fill"); f.style.width = clamp(val) + "%"; tr.append(f);
+    row.append(name, tr, el("div", "num", String(clamp(val))));
+    return row;
+  }
+  function scoreCard(title, value, bandText, bandColor, rows){
+    const c = el("div", "scorecard");
+    c.append(el("div", "label", title));
+    const big = el("div", "big"); big.textContent = value; big.append(el("small", null, "/100"));
+    const bd = el("div", "band", bandText); bd.style.color = bandColor;
+    const dims = el("div", "dims"); rows.forEach(r => dims.append(r));
+    c.append(big, bd, dims);
+    return c;
+  }
+
+  function render(d, resume){
+    d = d || {};
+    const out = $("out"); out.innerHTML = ""; out.hidden = false; $("empty").hidden = true;
+    const wrap = el("div", "stack");
+
+    // keywords normalize
+    const kws = arr(d.keywords).filter(x => x && x.term).map(x => ({...x, status: ["present","reword","gap"].includes(x.status) ? x.status : "gap", importance: x.importance === "nice" ? "nice" : "must"}));
+    let wSum = 0, wGot = 0;
+    kws.forEach((k, i) => { const w = (k.importance === "must" ? 2 : 1) * (1 + (kws.length - i) / kws.length); wSum += w; wGot += w * (k.status === "present" ? 1 : k.status === "reword" ? .5 : 0); });
+    const kwCov = wSum ? Math.round(wGot / wSum * 100) : 0;
+    const mustGaps = kws.filter(k => k.importance === "must" && k.status === "gap").length;
+    const ko = arr(d.knockouts).filter(Boolean);
+    const koScore = Math.max(0, 100 - 40 * ko.length);
+    const ats = Math.round(.6 * kwCov + .25 * lastChecks.score + .15 * koScore);
+    const s = d.scores || {};
+    const fit = Math.round(Object.keys(FIT_W).reduce((t,k) => t + clamp(s[k]) * FIT_W[k], 0));
+
+    // header + scores
+    const sec = el("section");
+    if (d.role) sec.append(el("div", "label", d.role));
+    const grid = el("div", "scores");
+    const ab = bandFor(ats), fb = bandFor(fit);
+    grid.append(
+      scoreCard("ATS screen", ats, ab[0], ab[1], [bar("Keyword coverage", "60%", kwCov), bar("Readability", "25%", lastChecks.score), bar("Hard requirements", "15%", koScore)]),
+      scoreCard("Fit for the role", fit, fb[0], fb[1], Object.keys(FIT_W).map(k => bar(FIT_L[k], Math.round(FIT_W[k]*100) + "%", s[k])))
+    );
+    sec.append(grid);
+    if (d.verdict){ const v = el("p", "verdict", d.verdict); v.style.marginTop = "14px"; sec.append(v); }
+    if (mustGaps){ const p = el("p", "why", mustGaps + " must-have keyword" + (mustGaps > 1 ? "s are" : " is") + " missing. Those weigh the most in the ATS screen score."); p.style.margin = "6px 0 0"; sec.append(p); }
+    wrap.append(sec);
+
+    if (ko.length){
+      const k = el("section", "knock");
+      k.append(el("strong", null, "Hard requirements you don't show"));
+      const ul = el("ul"); ko.forEach(x => ul.append(el("li", null, String(x)))); k.append(ul);
+      wrap.append(k);
+    }
+
+    // Tailor checklist
+    const ta = arr(d.tailor_actions).filter(x => x && x.action);
+    if (ta.length){
+      const ts = el("section");
+      const h = el("h3", null, "What to add or tailor "); h.append(el("span", "count", ta.length + " changes, most important first")); ts.append(h);
+      const ul = el("ul", "todo");
+      ta.forEach((x, i) => {
+        const li = el("li", "pri-" + (x.priority || "medium"));
+        const cb = el("input"); cb.type = "checkbox"; cb.id = "todo" + i; cb.setAttribute("aria-label", x.action);
+        cb.addEventListener("change", () => li.classList.toggle("done", cb.checked));
+        const body = el("div");
+        body.append(el("span", "where", x.where || "Resume"));
+        body.append(el("span", "t", x.action + (x.source === "notes" ? " (from your notes)" : "")));
+        if (x.detail) body.append(el("span", "d", x.detail));
+        li.append(cb, body); ul.append(li);
+      });
+      ts.append(ul); wrap.append(ts);
+    }
+
+    // Matching skills
+    const sm = arr(d.skills_matched).filter(x => x && (x.jd || x.resume));
+    if (sm.length){
+      const ss = el("section");
+      const h = el("h3", null, "Skills that already match "); h.append(el("span", "count", sm.length + " found")); ss.append(h);
+      const p = el("div", "pairs");
+      const hd = el("div", "head"); hd.append(el("span", null, "JD asks for"), el("span", null, "Your resume says")); p.append(hd);
+      sm.forEach(x => { const r = el("div"); const right = el("span"); right.textContent = (x.resume || "") + (x.where ? "  · " + x.where : ""); r.append(el("span", null, x.jd || ""), right); p.append(r); });
+      ss.append(p);
+      const tip = el("p", "why", "Where the two wordings differ, an exact-match ATS may miss it. Use the JD's words in your Skills section."); tip.style.margin = "8px 0 0"; ss.append(tip);
+      wrap.append(ss);
+    }
+
+    // Keywords
+    if (kws.length){
+      const ks = el("section");
+      const c = {present:0, reword:0, gap:0}; kws.forEach(k => c[k.status]++);
+      const h = el("h3", null, "JD keywords "); h.append(el("span", "count", `${c.present} there · ${c.reword} to reword · ${c.gap} gaps`)); ks.append(h);
+      const lg = el("div", "legend");
+      [["Already on your resume","var(--ok)"],["There, but worded differently","var(--warn)"],["Not shown","var(--bad)"]].forEach(([t,col]) => { const sp = el("span"); const dt = el("span","dot"); dt.style.background = col; sp.append(dt, document.createTextNode(t)); lg.append(sp); });
+      lg.append(el("span", null, "★ must-have"));
+      ks.append(lg);
+      const chips = el("div", "chips");
+      kws.forEach(x => { const ch = el("span", "chip " + x.status, (x.importance === "must" ? "★ " : "") + x.term); if (x.note) ch.title = x.note; chips.append(ch); });
+      ks.append(chips);
+      const det = el("details"); det.style.marginTop = "10px";
+      const su = el("summary"); su.append(el("span","label","What each keyword means for your resume"), el("span","chev","▾")); det.append(su);
+      const list = el("div", "kwlist");
+      kws.filter(x => x.status !== "present").concat(kws.filter(x => x.status === "present")).forEach(x => { const r = el("div"); r.append(el("b", null, x.term), el("span", null, x.note || "")); list.append(r); });
+      det.append(list); ks.append(det);
+      wrap.append(ks);
+    }
+
+    // Bullet edits
+    const be = arr(d.bullet_edits).filter(x => x && x.suggested);
+    if (be.length || d.bullet_order){
+      const bs = el("section");
+      const h = el("h3", null, "Bullet rewrites "); h.append(el("span", "count", be.length + " suggested")); bs.append(h);
+      if (d.bullet_order){ const o = el("p", "why", "Order: " + d.bullet_order); o.style.margin = "0 0 12px"; bs.append(o); }
+      const lines = resume.split("\n").map(l => l.replace(/^[-•●▪◦*]\s*/, "").trim()).filter(Boolean);
+      be.forEach((x, i) => {
+        const box = el("div", "edit" + (i === 0 ? " first" : ""));
+        const cur = String(x.current || "").trim().toLowerCase().slice(0, 40);
+        const full = lines.find(l => cur && l.toLowerCase().startsWith(cur)) || x.current;
+        if (full) box.append(el("div", "before", full));
+        box.append(el("div", "after", x.suggested));
+        const r = el("div", "row between"); r.append(el("span", "why", x.why || ""), copyBtn(x.suggested));
+        box.append(r); bs.append(box);
+      });
+      wrap.append(bs);
+    }
+
+    // Summary
+    if (d.summary_suggested){
+      const ss = el("section");
+      ss.append(el("h3", null, "Summary rewrite"));
+      ss.append(el("div", "after", d.summary_suggested));
+      const r = el("div", "row between"); r.style.marginTop = "8px";
+      r.append(el("span", "why", d.summary_why || ""), copyBtn(d.summary_suggested));
+      ss.append(r); wrap.append(ss);
+    }
+
+    // Skills section
+    const sa = arr(d.skills_add).filter(Boolean);
+    if (sa.length || d.skills_reorder){
+      const sk = el("section");
+      sk.append(el("h3", null, "Skills section changes"));
+      if (sa.length){ const c = el("div", "chips"); sa.forEach(x => c.append(el("span", "chip present", "+ " + x))); sk.append(c); }
+      if (d.skills_reorder){ const p = el("p", "why", d.skills_reorder); p.style.margin = "8px 0 0"; sk.append(p); }
+      wrap.append(sk);
+    }
+
+    // Gaps
+    const gp = arr(d.gaps).filter(x => x && x.gap);
+    if (gp.length){
+      const g = el("section");
+      g.append(el("h3", null, "Gaps and how to handle them"));
+      const ul = el("ul", "ul");
+      gp.forEach(x => { const li = el("li", "gap-item"); li.append(el("b", null, x.gap + ". "), el("span", null, x.how || "")); ul.append(li); });
+      g.append(ul); wrap.append(g);
+    }
+
+    out.append(wrap);
+    out.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start"});
+  }
+})();
+</script>
+
+</body>
+</html>
