@@ -257,6 +257,7 @@ section+section{border-top:1px solid var(--line);padding-top:16px}
   const FIT_L = {skills:"Skills and domain", responsibilities:"Responsibilities", seniority:"Seniority and years", title:"Title"};
   const SAVED_RESUME = "";
   const SAVED_NOTES = "";
+  let lastChecks = {score: 0, items: []};
   let pdfColumns = null;   // null = not a PDF / unknown; else {suspect:boolean}
   let sourceLabel = "No resume uploaded yet";
 
@@ -364,7 +365,6 @@ section+section{border-top:1px solid var(--line);padding-top:16px}
   }
 
   /* ---------- readability checks (no Claude) ---------- */
-  let lastChecks = {score: 0, items: []};
   function runChecks(){
     const t = $("resume").value || "";
     const lower = t.toLowerCase();
